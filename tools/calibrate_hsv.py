@@ -174,7 +174,8 @@ def calibrate(train, a):
     best = None
     for c in cands:
         p = BallParams(hsv_lower=(c["h_lo"], c["s_lo"], c["v_lo"]),
-                       hsv_upper=(c["h_hi"], 255, 255), proc_width=a.proc_width)
+                       hsv_upper=(c["h_hi"], 255, 255), proc_width=a.proc_width,
+                       max_results=a.max_results)
         f1o, counts, per = evaluate_objects(train, p)
         key = (f1o, c["f1_pix"])
         if best is None or key > best[0]:
@@ -219,6 +220,8 @@ def main():
     ap.add_argument("--out", default="ball_params.json")
     ap.add_argument("--cv", choices=["group", "loo", "none"], default="group")
     ap.add_argument("--proc-width", type=int, default=640)
+    ap.add_argument("--max-results", type=int, default=1,
+                    help="detecciones máx. por imagen al evaluar (>1 si hay varias pelotas por foto)")
     ap.add_argument("--inner", type=float, default=0.85)
     ap.add_argument("--outer", type=float, default=1.2)
     ap.add_argument("--h-lo-max", type=int, default=15)

@@ -1,4 +1,4 @@
-"""Detector de pelota de golf naranja (Ø 42 ± 2 mm).
+"""Detector de pelota naranja (golf Ø 42 mm, ping-pong Ø 40 mm: ver BallParams.diameter_m).
 
 Estrategia (MVP clásico, sin modelos):
   1. Reducir resolución         -> costo ~ proporcional a los píxeles
@@ -22,7 +22,7 @@ import numpy as np
 
 from core import Detection, Frame
 
-BALL_DIAMETER_M = 0.042
+BALL_DIAMETER_M = 0.042        # valor por defecto (golf); cada calibración lo lleva en BallParams.diameter_m
 
 
 @dataclass
@@ -37,6 +37,7 @@ class BallParams:
     min_fill: float = 0.60             # A / (π r²) del círculo envolvente
     max_results: int = 1
     focal_px: float | None = None      # f en px (calibración) -> distancia
+    diameter_m: float = BALL_DIAMETER_M   # diámetro real de la pelota (m): golf 0.042, ping-pong 0.040
 
     def to_json(self, path: str) -> None:
         with open(path, "w") as f:
@@ -51,10 +52,11 @@ class BallParams:
         return cls(**d)
 
     @staticmethod
-    def radius_bounds_from_distance(focal_px: float, z_min: float, z_max: float):
+    def radius_bounds_from_distance(focal_px: float, z_min: float, z_max: float,
+                                    diameter_m: float = BALL_DIAMETER_M):
         """r = f·D / (2Z): convierte un rango de distancias (m) a radios (px)."""
-        return (focal_px * BALL_DIAMETER_M / (2 * z_max),
-                focal_px * BALL_DIAMETER_M / (2 * z_min))
+        return (focal_px * diameter_m / (2 * z_max),
+                focal_px * diameter_m / (2 * z_min))
 
 
 class BallDetector:
@@ -107,8 +109,8 @@ class BallDetector:
             conf = min(1.0, circ) * min(1.0, fill)
             extra = {"circularity": round(circ, 3), "fill": round(fill, 3)}
             if p.focal_px:
-                extra["distance_m"] = p.focal_px * BALL_DIAMETER_M / (2 * r_orig)
-            cands.append(Detection("ball", "golf_orange",
+                extra["distance_m"] = p.focal_px * p.diameter_m / (2 * r_orig)
+            cands.append(Detection("ball", "orange",
                                    (x / scale, y / scale), r_orig, conf, extra))
 
         cands.sort(key=lambda d: d.confidence, reverse=True)

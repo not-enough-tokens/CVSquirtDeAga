@@ -8,6 +8,8 @@ import cv2
 PHOTO_PATH = "capture.jpg"
 ITERATIONS_N = 30
 CAPTURE_TIMEOUT_S = 15
+error_record = 0
+ERROR_TOLERANCE = 5
 
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 detector = cv2.aruco.ArucoDetector(aruco_dict, cv2.aruco.DetectorParameters())
@@ -24,9 +26,13 @@ for i in range(ITERATIONS_N):
         t0 = time.perf_counter()
         subprocess.run(["termux-camera-photo", "-c", "0", PHOTO_PATH], check=True, timeout=CAPTURE_TIMEOUT_S)
         t_cap = time.perf_counter() - t0
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
-            FileNotFoundError) as e:
+        error_record = 0
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         print(f"[{i:02d}] captura falló: {e}")
+        error_record += 1
+
+        if error_record >= ERROR_TOLERANCE: break
+
         continue
 
     # --- TODO 2: lectura + detección (medidas por separado) ---
@@ -35,6 +41,11 @@ for i in range(ITERATIONS_N):
     t_read = time.perf_counter() - t0
     if img is None:
         print(f"[{i:02d}] imread devolvió None")
+
+        error_record += 1
+
+        if error_record >= ERROR_TOLERANCE: break
+
         continue
 
     t0 = time.perf_counter()
@@ -42,8 +53,8 @@ for i in range(ITERATIONS_N):
     t_det = time.perf_counter() - t0
 
     found = [] if ids is None else ids.flatten().tolist()
-    print(f"[{i:02d}] cap={t_cap:.3f}s read={t_read*1e3:.1f}ms "
-          f"det={t_det*1e3:.1f}ms ids={found or '-'}")
+    print(f"[{i:02d}] cap={t_cap:.3f}s read={t_read * 1e3:.1f}ms "
+          f"det={t_det * 1e3:.1f}ms ids={found or '-'}")
     cycles.append((t_cap, t_read, t_det, found))
 
 # --- TODO 3: estadísticas ---

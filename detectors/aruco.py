@@ -24,5 +24,6 @@ class ArucoDetector:
             center = pts.mean(axis=0)
             side = np.linalg.norm(pts - np.roll(pts, 1, axis=0), axis=1).mean()
             out.append(Detection("aruco", int(i), (float(center[0]), float(center[1])),
-                                 float(side), 1.0))
+                                 float(side), 1.0,
+                                 {"corners": pts.round(1).tolist()}))
         return out

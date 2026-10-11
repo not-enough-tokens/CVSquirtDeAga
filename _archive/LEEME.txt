@@ -1,0 +1,6 @@
+Archivado el 2026-10-10 (sigue en git; se puede devolver con mv).
+  recorder.py      benchmark inicial de captura+ArUco; lo superan los tiempos de live.py / pipeline.summarize
+  test.py          prueba de humo del entorno (versión de Python/OpenCV)
+  import_yolo.py   convirtió el dataset YOLO de Roboflow al formato de calibrate_hsv.py (tarea de una sola vez)
+  capture.jpg      última foto del benchmark
+Para reutilizar import_yolo.py: devolverlo a tools/ (usa sys.path relativo a la raíz del proyecto).
