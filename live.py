@@ -29,6 +29,7 @@ import time
 
 import cv2
 
+import link
 from core import Frame
 from detectors import ArucoDetector, BallDetector, BallParams
 from onsite import params_from_click
@@ -105,6 +106,7 @@ def main():
     ap.add_argument("--interval", type=float, default=0.0, help="pausa extra entre ciclos (s)")
     ap.add_argument("-n", type=int, default=0, help="ciclos (0 = hasta Ctrl-C)")
     ap.add_argument("--fail-tolerance", type=int, default=5)
+    link.add_arguments(ap)
     a = ap.parse_args()
 
     os.makedirs(a.out, exist_ok=True)
@@ -183,11 +185,14 @@ def main():
     print(f"Parámetros de pelota: {a.ball_params if os.path.exists(a.ball_params) else 'por defecto'}")
 
     console = ConsoleSink()
+    arduino = link.sink_from_args(a)
     interval = max(a.interval, 0.5 if a.images else 0.0)     # con imágenes, evita un bucle desbocado
     i = 0
     try:
         for frame, r in stream(source, [aruco, ball], a.fail_tolerance, interval, lock):
             console.send(r)
+            if arduino:
+                arduino.send(r)
             with lock:
                 state["last"] = (frame.image, frame.index, r.detections, r.timings)
                 publish(frame.image, frame.index, r.detections, r.timings)
@@ -198,6 +203,9 @@ def main():
         raise SystemExit(str(e))
     except KeyboardInterrupt:
         print("\nFin.")
+    finally:
+        if arduino:
+            arduino.close()
 
 
 if __name__ == "__main__":

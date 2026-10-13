@@ -3,11 +3,14 @@
   python main.py --images a.jpg b.jpg             # sin cámara (laptop / pruebas)
   python main.py --debug-mask                     # guarda la máscara de la pelota
   python main.py --ball-params ball_params.json   # umbrales calibrados
+  python main.py --images a.jpg --arduino-port COM8   # laptop: manda cada resultado al Arduino
+  (celular: ver phone/usb_launch.sh)
 """
 import argparse
 
 import cv2
 
+import link
 from detectors import ArucoDetector, BallDetector, BallParams
 from pipeline import ConsoleSink, run, summarize
 from sources import ImageFileSource, TermuxPhotoSource
@@ -21,6 +24,7 @@ def main():
     ap.add_argument("--focal-px", type=float, default=None)
     ap.add_argument("--debug-mask", action="store_true")
     ap.add_argument("--ball-params", help="JSON generado por tools/calibrate_hsv.py")
+    link.add_arguments(ap)
     a = ap.parse_args()
 
     source = ImageFileSource(a.images) if a.images else TermuxPhotoSource(camera=a.camera)
@@ -36,7 +40,13 @@ def main():
             cv2.imwrite("ball_mask.png", ball.mask(f)[0])
             print("máscara -> ball_mask.png")
 
-    summarize(run(source, detectors, [ConsoleSink()], a.n))
+    arduino = link.sink_from_args(a)
+    sinks = [ConsoleSink()] + ([arduino] if arduino else [])
+    try:
+        summarize(run(source, detectors, sinks, a.n))
+    finally:
+        if arduino:
+            arduino.close()
 
 
 if __name__ == "__main__":
