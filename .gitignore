@@ -3,3 +3,7 @@ __pycache__/
 out/
 data/
 capture.jpg
+arduino/compile_commands.json
+salida.txt
+ball_mask.png
+.idea/
