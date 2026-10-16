@@ -95,7 +95,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--images", nargs="*", help="ensayo sin cámara")
     ap.add_argument("--camera", type=int, default=0)
-    ap.add_argument("--camera-url", help="foto por HTTP de una app de cámara, p. ej. http://127.0.0.1:8080/shot.jpg (rápido)")
+    ap.add_argument("--camera-url", default="http://127.0.0.1:8080/shot.jpg",
+                    help="foto por HTTP de una app de cámara abierta (IP Webcam); por defecto %(default)s")
+    ap.add_argument("--termux-camera", action="store_true",
+                    help="usar termux-camera-photo (lento, ~1.4 s) en vez de --camera-url")
     ap.add_argument("--ball-params", default="ball_params.json")
     ap.add_argument("--max-balls", type=int, default=3)
     ap.add_argument("--focal-px", type=float, default=None)
@@ -124,7 +127,7 @@ def main():
         base.focal_px = a.focal_px
     ball = BallDetector(base)
     aruco = ArucoDetector()
-    source = source_from_args(a.images, a.camera, a.camera_url)
+    source = source_from_args(a.images, a.camera, None if a.termux_camera else a.camera_url)
 
     lock = threading.Lock()
     state = {"rev": 0, "last": None}        # last = (imagen, índice, dets ArUco, tiempos)
