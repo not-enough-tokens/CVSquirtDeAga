@@ -34,7 +34,7 @@ from core import Frame
 from detectors import ArucoDetector, BallDetector, BallParams
 from onsite import params_from_click
 from pipeline import ConsoleSink, stream
-from sources import ImageFileSource, TermuxPhotoSource
+from sources import source_from_args
 from debug.viz import annotate
 from debug.web import start_server
 
@@ -95,6 +95,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--images", nargs="*", help="ensayo sin cámara")
     ap.add_argument("--camera", type=int, default=0)
+    ap.add_argument("--camera-url", help="foto por HTTP de una app de cámara, p. ej. http://127.0.0.1:8080/shot.jpg (rápido)")
     ap.add_argument("--ball-params", default="ball_params.json")
     ap.add_argument("--max-balls", type=int, default=3)
     ap.add_argument("--focal-px", type=float, default=None)
@@ -123,7 +124,7 @@ def main():
         base.focal_px = a.focal_px
     ball = BallDetector(base)
     aruco = ArucoDetector()
-    source = ImageFileSource(a.images) if a.images else TermuxPhotoSource(camera=a.camera)
+    source = source_from_args(a.images, a.camera, a.camera_url)
 
     lock = threading.Lock()
     state = {"rev": 0, "last": None}        # last = (imagen, índice, dets ArUco, tiempos)

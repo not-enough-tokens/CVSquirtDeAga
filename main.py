@@ -16,12 +16,12 @@ import cv2
 import link
 from detectors import ArucoDetector, BallDetector, BallParams
 from pipeline import ConsoleSink, stream, summarize
-from sources import ImageFileSource, TermuxPhotoSource
+from sources import source_from_args
 
 
 def build(a):
     """Fuente y detectores nuevos. Se llama en cada sesión: así se relee ball_params.json."""
-    source = ImageFileSource(a.images) if a.images else TermuxPhotoSource(camera=a.camera)
+    source = source_from_args(a.images, a.camera, a.camera_url)
     bp = BallParams.from_json(a.ball_params) if a.ball_params else BallParams()
     if a.focal_px:
         bp.focal_px = a.focal_px
@@ -64,6 +64,7 @@ def main():
     ap.add_argument("-n", type=int, default=30)
     ap.add_argument("--forever", action="store_true", help="sin límite de ciclos (ignora -n)")
     ap.add_argument("--camera", type=int, default=0)
+    ap.add_argument("--camera-url", help="foto por HTTP de una app de cámara, p. ej. http://127.0.0.1:8080/shot.jpg (rápido)")
     ap.add_argument("--focal-px", type=float, default=None)
     ap.add_argument("--debug-mask", action="store_true")
     ap.add_argument("--ball-params", help="JSON generado por tools/calibrate_hsv.py")
