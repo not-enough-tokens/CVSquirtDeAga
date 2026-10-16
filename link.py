@@ -6,6 +6,9 @@ Protocolo v2 (ASCII, una línea por mensaje, 115200 baud):  M,<bola>,<n>,<id1>,.
   n    : cuántos ArUco se reportan (máx. MAX_IDS)
   idk  : ids de los ArUco, el más grande (el más cercano) primero, sin repetir
   Ejemplos:  M,1,3,7,12,3   M,0,0
+Sentido contrario (Arduino -> Python):  B\\n   "arranqué" (se envía al final de setup()). Como el
+botón de reinicio solo reinicia el ATmega y NO corta el USB (el CH340 sigue alimentado), esta línea es
+la única forma de que la visión se entere de que el robot se reinició.
 El mismo texto lo entiende arduino/src/main.cpp y se puede teclear a mano
 en el monitor serie (pio device monitor) para probar el LCD sin Python.
 
@@ -18,6 +21,7 @@ Prueba rápida desde la laptop (Arduino por USB):
 from __future__ import annotations
 
 import argparse
+import threading
 import time
 from types import SimpleNamespace
 from typing import Protocol
@@ -60,6 +64,12 @@ class SerialTransport:
         self._s.write(data)
         self._s.flush()
 
+    def read(self, timeout_ms: int = 100) -> bytes:
+        """Bytes disponibles; b'' si no llegó nada en timeout_ms."""
+        self._s.timeout = timeout_ms / 1000
+        data = self._s.read(1)
+        return data + self._s.read(self._s.in_waiting) if data else b""
+
     def close(self) -> None:
         self._s.close()
 
@@ -89,23 +99,87 @@ def sink_from_args(a):
 
 
 class ArduinoSink:
-    """Se conecta al pipeline igual que ConsoleSink: send(FrameResult)."""
+    """Se conecta al pipeline igual que ConsoleSink: send(FrameResult).
+
+    Si el transporte puede leer, un hilo escucha al Arduino. Al recibir "B" (arrancó) levanta una
+    bandera que main.py consulta con take_boot() para reiniciar la visión.
+    """
+
+    LOST_AFTER = 3      # envíos fallidos consecutivos para considerar caído el enlace
 
     def __init__(self, transport: Transport, verbose: bool = False):
         self.t = transport
         self.verbose = verbose
+        self.failures = 0
+        self._boot = threading.Event()
+        self._stop = threading.Event()
+        self._reader = None
+        if hasattr(transport, "read"):
+            self._drain()
+            self._reader = threading.Thread(target=self._read_loop, daemon=True)
+            self._reader.start()
 
+    # -- escritura --
     def send(self, r) -> None:
         line = encode(r.detections)
         try:
             self.t.write(line.encode("ascii"))
         except Exception as e:             # un enlace caído no debe tumbar la visión
-            print(f"[arduino] no se pudo enviar: {e}")
+            self.failures += 1
+            print(f"[arduino] no se pudo enviar ({self.failures}): {e}")
             return
+        self.failures = 0
         if self.verbose:
             print(f"[arduino] {line.strip()}")
 
+    @property
+    def lost(self) -> bool:
+        return self.failures >= self.LOST_AFTER
+
+    # -- lectura --
+    def _drain(self) -> None:
+        """Descarta lo acumulado antes de empezar (p. ej. el "B" de un arranque anterior)."""
+        for _ in range(10):
+            try:
+                if not self.t.read(50):
+                    break
+            except Exception:              # noqa: BLE001
+                break
+
+    def _read_loop(self) -> None:
+        buf = b""
+        while not self._stop.is_set():
+            try:
+                chunk = self.t.read(100)
+            except Exception as e:         # noqa: BLE001  (cable desconectado, etc.)
+                if not self._stop.is_set():
+                    print(f"[arduino] lectura detenida: {type(e).__name__}: {e}")
+                return
+            if not chunk:
+                continue
+            buf = (buf + chunk)[-128:]
+            while b"\n" in buf:
+                raw, buf = buf.split(b"\n", 1)
+                self._on_line(raw.decode("ascii", "replace").strip())
+
+    def _on_line(self, text: str) -> None:
+        if text == "B":
+            print("[arduino] anunció arranque (B)")
+            self._boot.set()
+        elif text and self.verbose:
+            print(f"[arduino<-] {text}")
+
+    def take_boot(self) -> bool:
+        """True una sola vez por cada arranque anunciado desde la última consulta."""
+        if self._boot.is_set():
+            self._boot.clear()
+            return True
+        return False
+
     def close(self) -> None:
+        self._stop.set()
+        if self._reader:
+            self._reader.join(timeout=1.0)
         try:
             self.t.close()
         except Exception:                  # noqa: BLE001

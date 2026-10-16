@@ -7,6 +7,10 @@
 //   idk  : ids de los ArUco, el más grande (el más cercano) primero
 // Ejemplos:  M,1,3,7,12,3     M,0,0     M,1,1,5
 //
+// Sentido contrario (Arduino -> celular): al terminar setup() se envía  B\n  ("arranqué"). El botón de
+// reinicio solo reinicia el ATmega; el CH340 sigue alimentado y el USB no se corta, así que el celular
+// solo puede enterarse por este mensaje (link.py lo usa para reiniciar la visión).
+//
 // Compatibilidad: sigue aceptando el formato anterior  D,<bx>,<by>,<br>,<aid>
 // (bola = bx>=0; un solo ArUco si aid>=0), para poder teclear pruebas viejas.
 //
@@ -149,6 +153,7 @@ void setup() {
   printRow(0, "Enlace USB");
   printRow(1, "esperando datos");
   lastRx = millis();
+  Serial.println(F("B"));       // anuncia el arranque (ver arriba); el celular reinicia la visión
 }
 
 void loop() {
