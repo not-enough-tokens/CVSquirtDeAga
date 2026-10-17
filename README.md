@@ -49,6 +49,17 @@ termux-usb -e ./phone/usb_launch.sh /dev/bus/usb/001/00N
 `phone/usb_launch.cmd` dice qué se ejecuta (`main.py ...` o `live.py ...`). Tras desplegar archivos al celular
 hay que repetir `chmod +x phone/*.py phone/*.sh`.
 
+**Arranque en competencia (robot ElDefensor, Mega con `pistaA`/`pistaB` ya cargado):**
+1. En el celular, abrir **IP Webcam** e iniciar el servidor (`http://127.0.0.1:8080/shot.jpg`; mucho más rápido
+   que `termux-camera-photo`). `phone/usb_launch.cmd` ya lleva `--forever --camera-url ...`.
+2. Encender el robot **quieto** (calibra el giroscopio). El LCD muestra `Espera vision 60` y `Ar:esperando`.
+3. Conectar el USB y correr `bash phone/run.sh`: busca el CH340, abre el enlace (sin DTR: **no** reinicia el Mega)
+   y manda detecciones. Con el primer mensaje válido el Mega pasa a `Arranca en 10 s` y luego corre la pista.
+   Si en 60 s no llega nada, arranca sin visión (`ARRANQUE_ESPERA_VISION_MS` en `config.h` de ElDefensor).
+4. Reinicio del Mega (lack of progress): anuncia `B` y `main.py` descarta el cuadro y reinicia la visión solo.
+   Si el USB se cae, `run.sh` vuelve a buscar el Arduino cada 3 s.
+Si IP Webcam no está abierta, las capturas fallan y `main.py --forever` reintenta cada 5 s.
+
 **Firmware:** en `arduino/`, `pio run -e uno -t upload`; monitor: `pio device monitor --port COM8 --baud 115200 --echo`
 (ejecútalo desde `arduino/` o pasa siempre `--port` y `--baud`).
 

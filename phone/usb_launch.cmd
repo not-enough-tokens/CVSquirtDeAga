@@ -1,1 +1,1 @@
-main.py --forever --ball-params ball_params.json
+main.py --forever --ball-params ball_params.json --camera-url http://127.0.0.1:8080/shot.jpg

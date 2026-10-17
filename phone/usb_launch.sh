@@ -8,6 +8,7 @@
 #   main.py -n 30 --ball-params ball_params.json
 #   live.py --ball-params ball_params.json
 # (sin el archivo: main.py -n 30 --ball-params ball_params.json). No pongas --arduino-fd: lo anade este script.
+# El de competencia usa --camera-url (IP Webcam abierta): ver "Arranque en competencia" en el README.
 FD="$1"
 cd "$(dirname "$0")/.." || exit 1
 CMD="main.py -n 30 --ball-params ball_params.json"
